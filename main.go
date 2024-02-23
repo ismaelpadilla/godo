@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/adrg/xdg"
 	"github.com/gen2brain/beeep"
-	"github.com/olebedev/when"
-	"github.com/olebedev/when/rules/common"
-	"github.com/olebedev/when/rules/en"
+	parser "github.com/ismaelpadilla/godo/date-parser"
+	"github.com/ismaelpadilla/godo/task"
 )
 
 func main() {
@@ -26,10 +24,11 @@ func main() {
 		return
 	}
 
-	reminderText := separated[0]
+	reminderText := strings.TrimSpace(separated[0])
 	reminderTime := strings.TrimSpace(separated[1])
 
-	r, err := parse(reminderTime)
+	p := parser.New()
+	r, err := p.Parse(reminderTime)
 	if err != nil {
 		panic(err)
 	}
@@ -38,26 +37,28 @@ func main() {
 		return
 	}
 
-	if !matchesExactly(reminderTime, r) {
+	if !matchesExactly(reminderTime, r.MatchedText) {
 		fmt.Println("Text doesn't exactly match")
 	}
 
-	fmt.Printf("reminderText: %v\n", reminderText)
-	fmt.Printf("r.Time: %v\n", r.Time)
+	t := task.Task{
+		Text:     reminderText,
+		Notified: false,
+		DueDate:  r.Time,
+	}
+
+	encoded, err := t.Encode()
+	decoded, err := task.FromString(encoded)
+	reencoded, err := decoded.Encode()
+	fmt.Printf("encoded: %v\n", encoded)
+	fmt.Printf("decoded: %v\n", decoded)
+	fmt.Printf("reencoded: %v\n", reencoded)
 }
 
-func matchesExactly(text string, result *when.Result) bool {
-	return text == result.Text
+func matchesExactly(text, matchedResult string) bool {
+	return text == matchedResult
 }
 
 func notify(text string) error {
 	return beeep.Notify("godo reminder", text, "")
-}
-
-func parse(text string) (*when.Result, error) {
-	w := when.New(nil)
-	w.Add(en.All...)
-	w.Add(common.All...)
-
-	return w.Parse(text, time.Now())
 }
