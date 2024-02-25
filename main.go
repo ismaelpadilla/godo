@@ -5,19 +5,22 @@ import (
 	"os"
 	"strings"
 
-	"github.com/adrg/xdg"
 	"github.com/gen2brain/beeep"
 	parser "github.com/ismaelpadilla/godo/date-parser"
 	"github.com/ismaelpadilla/godo/task"
 )
 
 func main() {
-	dataHome := xdg.DataHome
-	fmt.Println(dataHome)
 	input := strings.Join(os.Args[1:], " ")
-	separated := strings.Split(input, "@@")
 
-	fmt.Printf("input: %v\n", input)
+	if input == "--check" {
+		err := checkAndNotify()
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
+	separated := strings.Split(input, "@@")
 
 	if len(separated) != 2 {
 		fmt.Println("Correct usage: \"godo Remind me to do something @@ tomorrow\"")
@@ -47,12 +50,38 @@ func main() {
 		DueDate:  r.Time,
 	}
 
-	encoded, err := t.Encode()
-	decoded, err := task.FromString(encoded)
-	reencoded, err := decoded.Encode()
-	fmt.Printf("encoded: %v\n", encoded)
-	fmt.Printf("decoded: %v\n", decoded)
-	fmt.Printf("reencoded: %v\n", reencoded)
+	err = t.WriteToFile()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Task due on %s: %s", t.DueDate, t.Text)
+}
+
+func checkAndNotify() error {
+	tasks, err := task.LoadTasks()
+	if err != nil {
+		panic(err)
+	}
+
+	err = task.ClearSavedTasks()
+	if err != nil {
+		panic(err)
+	}
+	for _, t := range tasks {
+		if t.IsDue() && !t.Notified {
+			err := notify(t.Text)
+			if err != nil {
+				panic(err)
+			}
+			t.Notified = true
+		}
+
+		if !t.IsOld() {
+			t.WriteToFile()
+		}
+	}
+
+	return nil
 }
 
 func matchesExactly(text, matchedResult string) bool {
