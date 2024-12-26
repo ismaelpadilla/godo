@@ -13,6 +13,7 @@ import (
 )
 
 const fileName = "data"
+const dateFormat = "2006-01-02 15:04:05 -0700"
 
 type Task struct {
 	Text     string
@@ -25,7 +26,7 @@ func (t Task) Encode() (string, error) {
 	w := io.MultiWriter(&buf)
 	writer := csv.NewWriter(w)
 
-	record := []string{t.Text, strconv.FormatBool(t.Notified), t.DueDate.Format("2006-01-02 15:04:05")}
+	record := []string{t.Text, strconv.FormatBool(t.Notified), t.DueDate.Format(dateFormat)}
 
 	err := writer.Write(record)
 	if err != nil {
@@ -92,7 +93,7 @@ func LoadTasks() ([]Task, error) {
 			return nil, err
 		}
 
-		dueDate, err := time.Parse("2006-01-02 15:04:05", record[2])
+		dueDate, err := time.Parse(dateFormat, record[2])
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +133,7 @@ func FromString(text string) (*Task, error) {
 		return nil, err
 	}
 
-	dueDate, err := time.Parse("2006-01-02 15:04:05", record[2])
+	dueDate, err := time.Parse(dateFormat, record[2])
 	if err != nil {
 		return nil, err
 	}
